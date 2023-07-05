@@ -1,5 +1,12 @@
+import { NextResponse } from 'next/server';
+
 import { DEFAULT_SYSTEM_PROMPT } from '@/utils/app/const';
-import { BitapaiConversation, BitapaiError } from '@/utils/server';
+import {
+  BitAPAIConversation,
+  BitAPAIError,
+  ValidatorEndpointConversation,
+  ValidatorEndpointError,
+} from '@/utils/server';
 
 import { ChatBody, Message } from '@/types/chat';
 
@@ -9,7 +16,7 @@ export const config = {
 
 const handler = async (req: Request): Promise<Response> => {
   try {
-    const { messages, key, prompt } = (await req.json()) as ChatBody;
+    const { messages, key, prompt, api } = (await req.json()) as ChatBody;
 
     let promptToSend = prompt;
     if (!promptToSend) {
@@ -23,19 +30,46 @@ const handler = async (req: Request): Promise<Response> => {
       messagesToSend = [message, ...messagesToSend];
     }
 
-    const response = await BitapaiConversation(
-      key,
-      messagesToSend,
-      promptToSend,
-    );
+    let response;
+
+    switch (api) {
+      case 'BITAPAI':
+        // add Respond using markdown to BitAPAI cause it supports markdown response
+        response = await BitAPAIConversation(
+          key,
+          messagesToSend,
+          `${promptToSend} Respond using markdown.`,
+        );
+        break;
+      case 'Validator Endpoint':
+        response = await ValidatorEndpointConversation(
+          key,
+          messagesToSend,
+          promptToSend,
+        );
+        break;
+      default:
+        throw new Error(`${api} not implemented`);
+    }
 
     return new Response(response);
   } catch (error) {
     console.error(error);
-    if (error instanceof BitapaiError) {
-      return new Response('Error', { status: 500, statusText: error.message });
+    if (
+      error instanceof BitAPAIError ||
+      error instanceof ValidatorEndpointError
+    ) {
+      return NextResponse.json(
+        { type: 'Error', error: error.message },
+        {
+          status: 500,
+        },
+      );
     } else {
-      return new Response('Error', { status: 500 });
+      return NextResponse.json(
+        { type: 'Error', error: 'Unknown error occured' },
+        { status: 500 },
+      );
     }
   }
 };
