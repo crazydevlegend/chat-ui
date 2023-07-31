@@ -9,28 +9,25 @@ import { SidebarButton } from '@/components/Sidebar/SidebarButton';
 
 import ChatbarContext from '../Chatbar.context';
 import Checkbox from '@/components/Checkbox';
+import useApi from '@/hooks/useApi';
 
-const plugins = [
-  {
-    id: 'weather',
-    name: "OpenWeather Plugin",
-    description: "Provides weather forecast based on location. Includes temperature, precipitation, cloud cover, wind and much more."
-  },
-  {
-    id: 'news',
-    name: "AI News Plugin",
-    description: "Get Today's AI News Headlines."
-  }
-]
+interface Plugin {
+  id: string;
+  name: string;
+  description: string;
+}
 
-export const PluginKeys = () => {
+export const Plugins = () => {
   const { t } = useTranslation('sidebar');
+  const { data: plugins }: { data: Plugin[] } = useApi('/api/plugins');
   const [query, setQuery] = useState('');
+
   const filteredPlugins = useMemo(() => {
-    return plugins.filter((plugin) => {
+    if(!plugins) return [];
+    return plugins.filter((plugin: Plugin) => {
       return plugin.name.toLowerCase().includes(query.toLowerCase());
     });
-  }, [query]);
+  }, [query, plugins]);
 
   const {
     state: { selectedPlugins },
@@ -119,7 +116,7 @@ export const PluginKeys = () => {
                 </div>
                 <div className='max-h-[400px] overflow-auto divide-y'>
                   {
-                    filteredPlugins.map((plugin, index) => (
+                    filteredPlugins.map((plugin:Plugin, index: number) => (
                       <div className="mt-4 pt-2 px-2" key={index}>
                         <div className="text-xl font-bold">
                           <Checkbox 
